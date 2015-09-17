@@ -15,6 +15,8 @@ Server::Server()
     qDebug() << "CONFIG [Server]/address:" << m_config_IPStr;
     m_config_portInt = m_config.at(1).toInt();
     qDebug() << "CONFIG [Server]/port:" << m_config_portInt;
+    m_config_updatePortInt = m_config.at(2).toInt();
+    qDebug() << "CONFIG [Server]/updatePort:" << m_config_updatePortInt;
 
     connect(m_tcpServer, SIGNAL(readyRead()), this, SLOT(readSendBack()));
 
@@ -302,6 +304,7 @@ void Server::writeConfig()
 
     settings->setValue("Server/address", "172.168.0.116");
     settings->setValue("Server/port", "6666");
+    settings->setValue("Server/updatePort", "5555");
     delete settings;
 }
 
@@ -311,7 +314,74 @@ QStringList Server::readConfig()
     QSettings *settings = new QSettings(INIPATH, QSettings::IniFormat);
     QStringList config;
     config << settings->value("Server/address").toString()
-           << settings->value("Server/port").toString();
+           << settings->value("Server/port").toString()
+           << settings->value("Server/updatePort").toString();
     delete settings;
     return config;
+}
+
+
+QString Server::getLocalIP()
+{
+    QString ipAddress;
+    QList<QHostAddress> ipAddressesList = QNetworkInterface::allAddresses();
+    for (int i = 0; i < ipAddressesList.size(); ++i) {
+        if (ipAddressesList.at(i) != QHostAddress::LocalHost &&
+            ipAddressesList.at(i).toIPv4Address() &&
+            (ipAddressesList.at(i).toString().indexOf("168") != (-1))) {
+            ipAddress = ipAddressesList.at(i).toString();
+            break;
+        }
+    }
+    if (ipAddress.isEmpty())
+        ipAddress = QHostAddress(QHostAddress::LocalHost).toString();
+    return ipAddress;
+}
+
+
+void Server::progressListen()
+{
+    m_ipAddress = getLocalIP();
+    qDebug() << "IP Address:" << m_ipAddress;
+
+    QHostAddress ipAddress(m_ipAddress.toInt());
+    if(!m_progressServer->listen(ipAddress, m_config_updatePortInt))
+    {
+        qCWarning(SERVER()) << SERVER().categoryName() << ":" << m_progressServer->errorString();
+        m_progressServer->close();
+        return;
+    }
+    qDebug() << "Progress listen OK";
+
+    connect(m_progressServer, SIGNAL(newConnection()) ,
+            this, SLOT(progressConnection()));    // Send newConnection() signal when a new connection is detected
+}
+
+
+void Server::progressConnection()
+{
+    m_progressSocket = m_progressServer->nextPendingConnection();
+    connect(m_progressSocket, SIGNAL(readyRead()), this, SLOT(readProgress()));
+    connect(m_progressSocket, SIGNAL(error(QAbstractSocket::SocketError)),
+            this, SLOT(displayError(QAbstractSocket::SocketError)));
+
+    qDebug() << "Progress connection OK";
+}
+
+
+void Server::readProgress()
+{
+    QDataStream in(m_progressSocket);
+    in.setVersion(QDataStream::Qt_4_6);
+
+    qDebug() << "Receiving progress information...";
+
+    in >> m_progressBytes
+            >> m_progressHash;
+
+    qDebug() << "m_progressBytes:" << m_progressBytes;
+    qDebug() << "m_progressHahs:" << m_progressHash;
+
+    m_progressSocket->close();
+    qCDebug(SERVER()) << SERVER().categoryName() << ":" << "RECEIVED PROGRESS UPDATE FINISHED.";
 }

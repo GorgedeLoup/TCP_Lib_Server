@@ -27,6 +27,7 @@ private:
     QTcpSocket *m_tcpServer;
     QByteArray m_outBlock;
     QByteArray m_inBlock;
+    QString m_ipAddress;
 
     qint64 m_totalBytes;    // Total bytes to send for this send progress
     qint64 m_writtenBytes;
@@ -46,6 +47,12 @@ private:
     QStringList m_config;
     QString m_config_IPStr;
     qint16 m_config_portInt;
+    qint16 m_config_updatePortInt;
+
+    QTcpServer *m_progressServer;
+    QTcpSocket *m_progressSocket;
+    qint64 m_progressBytes;
+    QHash<QString, int> m_progressHash;
 
 public:
     Server();
@@ -58,6 +65,7 @@ signals:
 private slots:
     void connectServer();    // Connect to client
     void displayError(QAbstractSocket::SocketError);    // Display error
+    QString getLocalIP();
 
     void convertSpot();
     QString writeSendInfo();
@@ -65,6 +73,9 @@ private slots:
     void writtenBytes(qint64);
     void writeConfig();
     QStringList readConfig();
+
+    void progressConnection();
+    void readProgress();
 
 public slots:
     void setCoordinate(QHash<float, QList<Spot3DCoordinate> > spot3D);
@@ -76,6 +87,8 @@ public slots:
     void sendCommandStop();
     void sendCommandPause();
     void sendCommandResume();
+
+    void progressListen();
 };
 
 
