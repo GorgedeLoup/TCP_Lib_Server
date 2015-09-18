@@ -55,7 +55,7 @@ private:
     QHash<QString, int> m_progressHash;
 
 public:
-    Server();
+    Server(QObject *parent = 0);
     ~Server();
 
 signals:
@@ -75,7 +75,7 @@ private slots:
     QStringList readConfig();
 
     void progressConnection();
-    void readProgress();
+    //void readProgress();
 
 public slots:
     void setCoordinate(QHash<float, QList<Spot3DCoordinate> > spot3D);
@@ -89,6 +89,8 @@ public slots:
     void sendCommandResume();
 
     void progressListen();
+
+    void readProgress();
 };
 
 

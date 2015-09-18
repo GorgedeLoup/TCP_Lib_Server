@@ -307,7 +307,7 @@ void Server::writeConfig()
 }
 
 
-QStringList Server::readConfig()
+void Server::readConfig()
 {
     QSettings *settings = new QSettings(INIPATH, QSettings::IniFormat);
     QStringList config;
