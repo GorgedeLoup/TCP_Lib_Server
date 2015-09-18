@@ -4,10 +4,13 @@
 Q_LOGGING_CATEGORY(SERVER, "SERVER")
 
 Server::Server(QObject *parent) : QObject(parent),
-      m_progressServer(0), m_progressSocket(0), m_tcpServer(0),
       m_totalBytes(0), m_sendTimeNum(1)
 {
 // Variables initialization and build connections
+    m_tcpServer = new QTcpSocket(this);
+    m_progressServer = new QTcpServer(this);
+    m_progressSocket = new QTcpSocket(this);
+
     setCmdString();
 
     readConfig();
@@ -272,7 +275,7 @@ void Server::progressListen()
     qDebug() << "IP Address:" << m_ipAddress;
 
     QHostAddress ipAddress(m_ipAddress.toInt());
-    if(!m_progressServer->listen(ipAddress, m_config_updatePortInt))
+    if(!m_progressServer->listen(ipAddress, m_ipAnotherPort))
     {
         qCWarning(SERVER()) << SERVER().categoryName() << ":" << m_progressServer->errorString();
         m_progressServer->close();
@@ -310,5 +313,6 @@ void Server::readProgress()
     qDebug() << "m_progressHahs:" << m_progressHash;
 
     m_progressSocket->close();
-    qCDebug(SERVER()) << SERVER().categoryName() << ":" << "RECEIVED PROGRESS UPDATE FINISHED.";
+    qCDebug(SERVER()) << SERVER().categoryName() << ":" << "RECEIVE PROGRESS UPDATE FINISHED.";
+    qDebug() << "-------------------";
 }
