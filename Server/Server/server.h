@@ -29,6 +29,7 @@ public slots:
     inline void setParameter(SpotSonicationParameter parameter){m_parameter = parameter;}
 
     void sendPlanHash();
+    void sendCommand(cmdType);
     void progressListen();
 
 private slots:
@@ -47,7 +48,7 @@ private slots:
     void readProgress();
 
 signals:
-    sendingCompeleted();
+    sendingCompleted();
     error_sendBackCheck();
     error_sendCheck();
 

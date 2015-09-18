@@ -8,13 +8,12 @@ Server::Server(QObject *parent) : QObject(parent),
       m_totalBytes(0), m_sendTimeNum(1)
 {
 // Variables initialization and build connections
-    m_config = readConfig();
-    m_config_IPStr = m_config.at(0);
-    qDebug() << "CONFIG [Server]/address:" << m_config_IPStr;
-    m_config_portInt = m_config.at(1).toInt();
-    qDebug() << "CONFIG [Server]/port:" << m_config_portInt;
-    m_config_updatePortInt = m_config.at(2).toInt();
-    qDebug() << "CONFIG [Server]/updatePort:" << m_config_updatePortInt;
+    setCmdString();
+
+    readConfig();
+    qDebug() << "CONFIG [Server]/address:" << m_ipAddress;
+    qDebug() << "CONFIG [Server]/port:" << m_ipPort;
+    qDebug() << "CONFIG [Server]/port2:" << m_ipAnotherPort;
 
     connect(m_tcpServer, SIGNAL(readyRead()), this, SLOT(readSendBack()));
 
@@ -26,19 +25,11 @@ Server::~Server()
 {
 }
 
-
-void Server::setCoordinate(QHash<float, QList<Spot3DCoordinate> > spot3D){m_spot3D = spot3D;}
-
-void Server::setSpotOrder(QHash<float, QList<int> > spotOrder){m_spotOrder = spotOrder;}
-
-void Server::setParameter(SpotSonicationParameter parameter){m_parameter = parameter;}
-
-
 // Connect to client and start session
 void Server::connectServer()
 {
-    QHostAddress ipAddress(m_config_IPStr);    // Set the IP address of another computer
-    m_tcpServer->connectToHost(ipAddress, m_config_portInt);    // Connect
+    QHostAddress ipAddress(m_ipAddress);    // Set the IP address of another computer
+    m_tcpServer->connectToHost(ipAddress, m_ipPort);    // Connect
 }
 
 
@@ -190,6 +181,7 @@ void Server::sendPlanHash()
         m_writtenBytes = 0;
         m_totalBytes = 0;
         m_outBlock.resize(0);
+        emit sendingCompleted();
 //        m_spot3D.clear();
 //        m_spotOrder.clear();
 //        m_parameter.clear();
@@ -203,119 +195,56 @@ void Server::sendPlanHash()
 }
 
 
-// Send command start
-void Server::sendCommandStart()
+void Server::setCmdString()
 {
-    connectServer();
-
-    QDataStream m_sendOut(&m_outBlock, QIODevice::WriteOnly);
-    m_sendOut.setVersion(QDataStream::Qt_4_6);
-
-    qDebug() << "Sending command start...";
-
-    m_sendOut << qint64(1);
-    m_sendOut << qint64(1);
-
-    m_tcpServer->write(m_outBlock);
-    m_outBlock.resize(0);
-
-    m_tcpServer->close();
-    qDebug() << "Send finished";
-    qCDebug(SERVER()) << SERVER().categoryName() << ":" << "SEND COMMAND START";
-    qDebug() << "**************************************";
+    //  TODO
+    m_cmdList << "SEND COMMAND START"
+              << "SEND COMMAND STOP"
+              << "SEND COMMAND PAUSE"
+              << "SEND COMMAND RESUME";
 }
 
 
-// Send command stop
-void Server::sendCommandStop()
+void Server::sendCommand(cmdType iType)
 {
     connectServer();
 
     QDataStream m_sendOut(&m_outBlock, QIODevice::WriteOnly);
     m_sendOut.setVersion(QDataStream::Qt_4_6);
 
-    qDebug() << "Sending command stop...";
+    qDebug() << "Start sending command...";
 
     m_sendOut << qint64(1);
-    m_sendOut << qint64(2);
+    m_sendOut << qint64(iType);
 
     m_tcpServer->write(m_outBlock);
     m_outBlock.resize(0);
 
     m_tcpServer->close();
     qDebug() << "Send finished";
-    qCDebug(SERVER()) << SERVER().categoryName() << ":" << "SEND COMMAND STOP";
+    qCDebug(SERVER()) << SERVER().categoryName() << ":" << m_cmdList.at(iType - 1);
     qDebug() << "**************************************";
+    emit sendingCompleted();
 }
 
 
-// Send command pause
-void Server::sendCommandPause()
+void Server::readConfig()
 {
-    connectServer();
-
-    QDataStream m_sendOut(&m_outBlock, QIODevice::WriteOnly);
-    m_sendOut.setVersion(QDataStream::Qt_4_6);
-
-    qDebug() << "Sending command pause...";
-
-    m_sendOut << qint64(1);
-    m_sendOut << qint64(3);
-
-    m_tcpServer->write(m_outBlock);
-
-    m_outBlock.resize(0);
-
-    m_tcpServer->close();
-    qDebug() << "Send finished";
-    qCDebug(SERVER()) << SERVER().categoryName() << ":" << "SEND COMMAND PAUSE";
-    qDebug() << "**************************************";
-}
-
-
-// Send command resume
-void Server::sendCommandResume()
-{
-    connectServer();
-
-    QDataStream m_sendOut(&m_outBlock, QIODevice::WriteOnly);
-    m_sendOut.setVersion(QDataStream::Qt_4_6);
-
-    qDebug() << "Sending command resume...";
-
-    m_sendOut << qint64(1);
-    m_sendOut << qint64(4);
-
-    m_tcpServer->write(m_outBlock);
-    m_outBlock.resize(0);
-
-    m_tcpServer->close();
-    qDebug() << "Send finished";
-    qCDebug(SERVER()) << SERVER().categoryName() << ":" << "SEND COMMAND RESUME";
-    qDebug() << "**************************************";
+    QSettings *settings = new QSettings(CONFIG_PATH, QSettings::IniFormat);
+    m_ipAddress = settings->value("Server/address").toString();
+    m_ipPort = settings->value("Server/port").toString().toUShort(0,10);
+    m_ipAnotherPort = settings->value("Server/port2").toString().toUShort(0,10);
+    delete settings;
 }
 
 
 void Server::writeConfig()
 {
-    QSettings *settings = new QSettings(INIPATH, QSettings::IniFormat);
-
-    settings->setValue("Server/address", "172.168.0.116");
-    settings->setValue("Server/port", "6666");
-    settings->setValue("Server/updatePort", "5555");
+    QSettings *settings = new QSettings(CONFIG_PATH, QSettings::IniFormat);
+    settings->setValue("Server/address", m_ipAddress);
+    settings->setValue("Server/port", m_ipPort);
+    settings->setValue("Server/port2", m_ipAnotherPort);
     delete settings;
-}
-
-
-QStringList Server::readConfig()
-{
-    QSettings *settings = new QSettings(INIPATH, QSettings::IniFormat);
-    QStringList config;
-    config << settings->value("Server/address").toString()
-           << settings->value("Server/port").toString()
-           << settings->value("Server/updatePort").toString();
-    delete settings;
-    return config;
 }
 
 
@@ -383,11 +312,3 @@ void Server::readProgress()
     m_progressSocket->close();
     qCDebug(SERVER()) << SERVER().categoryName() << ":" << "RECEIVED PROGRESS UPDATE FINISHED.";
 }
-
-
-//void Server::readProgress()
-//{
-//    connectServer();
-
-
-//}
