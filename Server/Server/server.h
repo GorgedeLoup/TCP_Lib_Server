@@ -1,7 +1,6 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-
 #include "server_global.h"
 #include "variable.h"
 
@@ -11,23 +10,53 @@
 #include <QHash>
 #include <QDate>
 #include <QTime>
+#include <QStringList>
 #include <QLoggingCategory>
 
 Q_DECLARE_LOGGING_CATEGORY(SERVER)
-
-// Set this constant as the path of .ini file
-#define INIPATH "C:/Users/Administrator/Documents/GitHub/TCP_Example_Server/ServerExample/lib/Config/Server.ini"
-
 
 class SERVERSHARED_EXPORT Server : public QObject
 {
     Q_OBJECT
 
+public:
+    Server(QObject *parent = 0);
+    ~Server();
+
+public slots:
+    inline void setCoordinate(QHash<float, QList<Spot3DCoordinate> > spot3D){m_spot3D = spot3D;}
+    inline void setSpotOrder(QHash<float, QList<int> > spotOrder){m_spotOrder = spotOrder;}
+    inline void setParameter(SpotSonicationParameter parameter){m_parameter = parameter;}
+
+    void sendPlanHash();
+    void progressListen();
+
+private slots:
+    void connectServer();    // Connect to client
+    void displayError(QAbstractSocket::SocketError);    // Display error
+    QString getLocalIP();
+
+    void convertSpot();
+    QString writeSendInfo();
+    void readSendBack();
+    void writtenBytes(qint64);
+    void writeConfig();
+    void readConfig();
+
+    void progressConnection();
+    void readProgress();
+
+signals:
+    sendingCompeleted();
+    error_sendBackCheck();
+    error_sendCheck();
+
 private:
     QTcpSocket *m_tcpServer;
     QByteArray m_outBlock;
     QByteArray m_inBlock;
-    QString m_ipAddress;
+
+    QStringList m_cmdList;
 
     qint64 m_totalBytes;    // Total bytes to send for this send progress
     qint64 m_writtenBytes;
@@ -44,53 +73,16 @@ private:
     int m_sendTimeNum;
     QString m_receivedInfo;
 
-    QStringList m_config;
-    QString m_config_IPStr;
-    qint16 m_config_portInt;
-    qint16 m_config_updatePortInt;
+    QString m_ipAddress;
+    quint16 m_ipPort;
+    quint16 m_ipAnotherPort;
+
+    void setCmdString();
 
     QTcpServer *m_progressServer;
     QTcpSocket *m_progressSocket;
     qint64 m_progressBytes;
     QHash<QString, int> m_progressHash;
-
-public:
-    Server(QObject *parent = 0);
-    ~Server();
-
-signals:
-    error_sendBackCheck();
-    error_sendCheck();
-
-private slots:
-    void connectServer();    // Connect to client
-    void displayError(QAbstractSocket::SocketError);    // Display error
-    QString getLocalIP();
-
-    void convertSpot();
-    QString writeSendInfo();
-    void readSendBack();
-    void writtenBytes(qint64);
-    void writeConfig();
-    QStringList readConfig();
-
-    void progressConnection();
-    //void readProgress();
-
-public slots:
-    void setCoordinate(QHash<float, QList<Spot3DCoordinate> > spot3D);
-    void setSpotOrder(QHash<float, QList<int> > spotOrder);
-    void setParameter(SpotSonicationParameter parameter);
-
-    void sendPlanHash();
-    void sendCommandStart();
-    void sendCommandStop();
-    void sendCommandPause();
-    void sendCommandResume();
-
-    void progressListen();
-
-    void readProgress();
 };
 
 
